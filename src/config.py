@@ -2,6 +2,11 @@ from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+class RedisConfig(BaseModel):
+    host: str = "localhost"
+    port: int = 6379
+
+
 class ApiV1Prefix(BaseModel):
     prefix: str = "/v1"
     users: str = "/users"
@@ -12,9 +17,10 @@ class ApiPrefix(BaseModel):
     v1: ApiV1Prefix = ApiV1Prefix()
 
 
-class Jwt_Token(BaseModel):
+class AccessToken(BaseModel):
     secret_key: str
     expire_time: int = 15 # minute
+    refresh_expire_time: int = 7 # days
     ALGORITHM: str = "HS256"
 
 
@@ -46,6 +52,7 @@ class AppSettings(BaseSettings):
     port: int
     db: DatabaseSettings
     api: ApiPrefix = ApiPrefix()
-    access_token: Jwt_Token
+    access_token: AccessToken
+    redis: RedisConfig = RedisConfig()
 
 settings = AppSettings()
