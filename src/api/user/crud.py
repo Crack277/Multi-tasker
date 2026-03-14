@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models import User
 
 from .schemas import UserCreate, UserUpdate
-from .security import get_hashed_password, create_access_token
+from . import security
 
 
 async def get_users(session: AsyncSession) -> List[User]:
@@ -27,7 +27,7 @@ async def create_user(user_in: UserCreate, session: AsyncSession):
     result = await session.scalar(stmt)
     if result is None:
         if user_in.hashed_password == user_in.reset_password:
-            hash_password = get_hashed_password(user_in.hashed_password)
+            hash_password = security.get_hashed_password(user_in.hashed_password)
             user = User(
                 email=user_in.email,
                 hashed_password=hash_password,
@@ -35,14 +35,9 @@ async def create_user(user_in: UserCreate, session: AsyncSession):
             session.add(user)
             await session.commit()
 
-            access_token = create_access_token(
-                data={"subject": user_in.email}
-            )
+            token_pair = security.create_token_pair(user_in.model_dump())
 
-            return {
-                "access_token": access_token,
-                "type_of_token": "bearer",
-            }
+            return token_pair
 
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
