@@ -1,0 +1,21 @@
+services:
+
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "6379:6379"
+
+
+  maildev:
+    image: maildev/vaildev
+    environment:
+      - TZ=Europe/Moscow
+      - MAILDEV_WEB_PORT=1080
+      - MAILDEV_SMTP_PORT-1025
+    ports:
+      - "8080:1080"
+      - "1025:1025"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
