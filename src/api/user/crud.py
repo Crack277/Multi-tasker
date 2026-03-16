@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import User
 
-from .schemas import UserCreate, UserUpdate
 from . import security
+from .schemas import UserCreate, UserUpdate
 
 
 async def get_users(session: AsyncSession) -> List[User]:
@@ -26,8 +26,8 @@ async def create_user(user_in: UserCreate, session: AsyncSession):
     stmt = select(User).where(User.email == user_in.email)
     result = await session.scalar(stmt)
     if result is None:
-        if user_in.hashed_password == user_in.reset_password:
-            hash_password = security.get_hashed_password(user_in.hashed_password)
+        if user_in.password == user_in.repeat_password:
+            hash_password = security.get_hashed_password(user_in.password)
             user = User(
                 email=user_in.email,
                 hashed_password=hash_password,
@@ -35,17 +35,16 @@ async def create_user(user_in: UserCreate, session: AsyncSession):
             session.add(user)
             await session.commit()
 
-            token_pair = security.create_token_pair(user_in.model_dump())
-
-            return token_pair
+            token = security.create_access_token(user_in.model_dump())
+            return token
 
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Пароли должны совпадать!"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Пароли должны совпадать!"
         )
 
     raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND, detail="Этот email уже используется другим пользователем!"
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Этот email уже используется другим пользователем!",
     )
 
 
