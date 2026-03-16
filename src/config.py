@@ -10,6 +10,10 @@ class RedisConfig(BaseModel):
 class ApiV1Prefix(BaseModel):
     prefix: str = "/v1"
     users: str = "/users"
+    auth: str = "/auth"
+    projects: str = "/projects"
+    tasks: str = "/tasks"
+    profile: str = "/profile"
 
 
 class ApiPrefix(BaseModel):
@@ -19,8 +23,8 @@ class ApiPrefix(BaseModel):
 
 class AccessToken(BaseModel):
     secret_key: str
-    expire_time: int = 15 # minute
-    refresh_expire_time: int = 7 # days
+    expire_time: int = 15  # minute
+    refresh_expire_time: int = 7  # days
     ALGORITHM: str = "HS256"
 
 
@@ -54,5 +58,6 @@ class AppSettings(BaseSettings):
     api: ApiPrefix = ApiPrefix()
     access_token: AccessToken
     redis: RedisConfig = RedisConfig()
+
 
 settings = AppSettings()
