@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.user.security import security
+from src.api.utils.security import security
 from src.config import settings
 from src.database.db import db_helper
 from src.models import User
