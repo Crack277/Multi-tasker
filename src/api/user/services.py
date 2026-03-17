@@ -5,10 +5,12 @@ from sqlalchemy import select
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.utils.security import get_hashed_password, verify_password
 from src.models import User
 
-from . import security
-from .schemas import UserCreate, UserUpdate
+from ..utils import security
+from .dependencies import user_by_id
+from .schemas import ResetPassword, UserCreate, UserUpdate
 
 
 async def get_users(session: AsyncSession) -> List[User]:
@@ -63,3 +65,31 @@ async def update_user(
 async def delete_user(user: User, session: AsyncSession) -> None:
     await session.delete(user)
     await session.commit()
+
+
+async def reset_user_password(
+    reset_password: ResetPassword,
+    current_user: dict,
+    session: AsyncSession,
+):
+    user = await user_by_id(user_id=current_user.get("user_id"), session=session)
+
+    if reset_password.new_password != reset_password.repeat_new_password:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="New passwords must be equals!",
+        )
+    if not verify_password(reset_password.old_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid password!",
+        )
+
+    set_hashed_password = get_hashed_password(reset_password.new_password)
+    user.hashed_password = set_hashed_password
+
+    await session.commit()
+    await session.refresh(user)
+    return {
+        "Access": True,
+    }

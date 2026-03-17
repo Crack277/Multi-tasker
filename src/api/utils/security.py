@@ -13,19 +13,21 @@ from src.models import User
 
 security = HTTPBearer()
 
-pwd_context = CryptContext(schemes=["bcrypt", "pbkdf2_sha256"], deprecated="auto")
+pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 
 
 def get_hashed_password(password: str):
     return pwd_context.hash(password)
 
 
-def verify_password(plain_password, hash_password):
+def verify_password(plain_password, hash_password) -> bool:
     return pwd_context.verify(plain_password, hash_password)
 
 
 def create_access_token(data: dict) -> dict:
-    encode_data = data.copy()
+    encode_data = {
+        "email": data.get("email"),
+    }
     expire = datetime.now() + timedelta(minutes=settings.access_token.expire_time)
     encode_data.update({"exp": expire, "type": "access"})
     token = jwt.encode(

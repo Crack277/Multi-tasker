@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.user.schemas import UserLoging
+from src.api.user.schemas import ResetPassword, UserLoging
 from src.config import settings
 from src.database.db import db_helper
 from src.models import User
 
-from . import security
+from ..utils import security
+from . import services
 
 router = APIRouter(prefix=settings.api.v1.auth, tags=["AUTH"])
 
@@ -37,3 +38,14 @@ async def login_user(
 @router.get("/me")
 async def get_auth_user(current_user: User = Depends(security.get_current_user)):
     return current_user
+
+
+@router.post("/password")
+async def reset_user_password(
+    reset_password: ResetPassword,
+    current_user: dict = Depends(security.get_current_user),
+    session: AsyncSession = Depends(db_helper.session_dependency),
+):
+    return await services.reset_user_password(
+        reset_password=reset_password, current_user=current_user, session=session
+    )
