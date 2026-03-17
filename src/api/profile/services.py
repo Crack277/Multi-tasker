@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from src.api.profile.schemas import ProfileCreate
+from src.api.profile.schemas import ProfileCreate, ProfileUpdate
 from src.models import Profile, User
 
 
@@ -37,6 +37,19 @@ async def create_user_profile(
         photo=profile_in.photo,
     )
     session.add(profile)
+    await session.commit()
+    await session.refresh(profile)
+    return profile
+
+
+async def update_user_profile(
+    profile_update: ProfileUpdate,
+    session: AsyncSession,
+    profile: Profile,
+    partial: bool = True,
+):
+    for name, value in profile_update.model_dump(exclude_unset=partial).items():
+        setattr(profile, name, value)
     await session.commit()
     await session.refresh(profile)
     return profile
