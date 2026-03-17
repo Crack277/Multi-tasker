@@ -10,3 +10,6 @@ class ProfileBase(BaseModel):
 class ProfileCreate(ProfileBase):
     pass
 
+
+class ProfileUpdate(ProfileBase):
+    pass
