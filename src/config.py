@@ -2,14 +2,22 @@ from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class RedisConfig(BaseModel):
+class RedisSettings(BaseModel):
     host: str = "localhost"
     port: int = 6379
+    db: int = 0
+    password: str | None = None
+
+    @property
+    def url(self) -> str:
+        if self.password:
+            return f"redis://:{self.password}@{self.host}:{self.port}/{self.db}"
+        return f"redis://{self.host}:{self.port}/{self.db}"
 
 
 class ApiV1Prefix(BaseModel):
     prefix: str = "/v1"
-    users: str = "/users"
+    users: str = "/user"
     auth: str = "/auth"
     projects: str = "/projects"
     tasks: str = "/tasks"
@@ -23,8 +31,7 @@ class ApiPrefix(BaseModel):
 
 class AccessToken(BaseModel):
     secret_key: str
-    expire_time: int = 15  # minute
-    refresh_expire_time: int = 7  # days
+    expire_minutes: int = 15
     ALGORITHM: str = "HS256"
 
 
@@ -37,7 +44,7 @@ class DatabaseSettings(BaseModel):
     echo: bool
 
     @property
-    def url(self):
+    def url(self) -> str:
         return (
             f"postgresql+asyncpg://{self.username}:{self.password}"
             f"@{self.host}:{self.port}/{self.name}"
@@ -57,7 +64,7 @@ class AppSettings(BaseSettings):
     db: DatabaseSettings
     api: ApiPrefix = ApiPrefix()
     access_token: AccessToken
-    redis: RedisConfig = RedisConfig()
+    redis: RedisSettings = RedisSettings()
 
 
 settings = AppSettings()
