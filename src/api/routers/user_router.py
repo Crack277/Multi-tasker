@@ -11,9 +11,11 @@ router = APIRouter(prefix=settings.api.v1.users, tags=["USERS"])
 
 
 @router.get("/")
-async def get_users(session: AsyncSession = Depends(db_helper.session_dependency)):
+async def get_users(
+    page: int, session: AsyncSession = Depends(db_helper.session_dependency)
+):
     service = UserService(session)
-    return await service.get_users()
+    return await service.get_users(page=page)
 
 
 @router.get("/{user_id}/")
