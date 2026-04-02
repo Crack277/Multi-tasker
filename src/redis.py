@@ -16,12 +16,10 @@ class RedisClient:
             await self.client.close()
 
     async def add_to_blacklist(self, token: str, expire_seconds: int):
-        """Add token to blacklist with expiration"""
         if self.client:
             await self.client.setex(f"blacklist:{token}", expire_seconds, "revoked")
 
     async def is_blacklisted(self, token: str) -> bool:
-        """Check if token is in blacklist"""
         if self.client:
             return await self.client.exists(f"blacklist:{token}") > 0
         return False

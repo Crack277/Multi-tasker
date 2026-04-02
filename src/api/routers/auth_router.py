@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,16 +27,6 @@ async def get_auth_user(
     current_user: User = Depends(security.get_current_user),
 ):
     return current_user
-
-
-@router.post("/upload-file")
-async def upload_file(
-    file: UploadFile = File(...),
-    current_user: User = Depends(security.get_current_user),
-    session: AsyncSession = Depends(db_helper.session_dependency),
-):
-    service = AuthService(session)
-    return await service.upload_file(file=file, current_user=current_user)
 
 
 @router.post("/reset-password")

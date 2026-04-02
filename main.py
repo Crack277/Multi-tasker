@@ -12,6 +12,7 @@ from src.redis import redis_client
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Для создания таблиц в БД
     # async with db_helper.engine.begin() as conn:
     #     await conn.run_sync(Base.metadata.create_all)
     await redis_client.connect()
