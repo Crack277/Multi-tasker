@@ -1,5 +1,7 @@
+from datetime import datetime, timezone
 from typing import List
 
+import aiofiles
 from fastapi import HTTPException, UploadFile, status
 from pydantic import EmailStr
 from sqlalchemy import and_, select
@@ -7,23 +9,28 @@ from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
+from src.api.schemas.category_schemas import CategoryCreate
 from src.api.schemas.profile_schemas import ProfileUpdate
-from src.api.schemas.project_schemas import (CreateUserProject,
-                                             UpdateUserProject)
-from src.api.schemas.task_schemas import TaskCreate
-from src.api.schemas.user_schemas import (AuthUpdatePassword,
-                                          UnAuthUpdatePassword, UserCreate,
-                                          UserUpdate)
+from src.api.schemas.project_schemas import CreateUserProject, UpdateUserProject
+from src.api.schemas.task_schemas import TaskCreate, UserTasksInfo
+from src.api.schemas.user_schemas import (
+    AuthUpdatePassword,
+    UnAuthUpdatePassword,
+    UserCreate,
+    UserUpdate,
+)
 from src.api.utils import security
-from src.models import Profile, Project, Task, User, Category
+from src.models import Category, Profile, Project, Task, User
+from src.models.task import TaskStatus, TaskPriority
 
 
 class UserRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_users(self) -> List[User]:
-        stmt = select(User).order_by(User.id)
+    async def get_users(self, page: int = 1, page_size: int = 10) -> List[User]:
+        offset = (page - 1) * page_size
+        stmt = select(User).order_by(User.id).limit(page_size).offset(offset)
         result: Result = await self.session.execute(stmt)
         users = result.scalars().all()
         return list(users)
@@ -66,18 +73,6 @@ class UserRepository:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="This user with confirmation code not found!",
         )
-
-    # async def get_user_profile(self, user_email: EmailStr) -> Profile:
-    #     stmt = select(Profile).where(Profile.email == user_email)
-    #     profile = await self.session.scalar(stmt)
-    #
-    #     if profile is not None:
-    #         return profile
-    #
-    #     raise HTTPException(
-    #         status_code=status.HTTP_404_NOT_FOUND,
-    #         detail="This profile not found!",
-    #     )
 
     async def get_user_with_profile(self, current_user: User) -> User:
         stmt = (
@@ -171,7 +166,7 @@ class UserRepository:
 
     async def recovery_user_password(
         self, current_user: User, update_password: UnAuthUpdatePassword
-    ):
+    ) -> User:
         if update_password.new_password == update_password.repeat_new_password:
             hashed_password = security.get_hashed_password(update_password.new_password)
             current_user.hashed_password = hashed_password
@@ -184,14 +179,14 @@ class UserRepository:
             detail="Passwords must be equals!",
         )
 
-    async def upload_file(self, file: UploadFile, user_id: int):
+    async def upload_file(self, file: UploadFile, user_id: int, name: str) -> str:
         from src.api.utils.static.photo import BASE_DIR
 
         contents = await file.read()
-        file_type = file.filename.split(".")[1]
-        file_url = f"{BASE_DIR}/avatar_{user_id}.{file_type}"
-        with open(file_url, "wb") as f:
-            f.write(contents)
+        file_type = file.filename.split(".")[-1]
+        file_url = f"{BASE_DIR}/{name}_{user_id}.{file_type}"
+        async with aiofiles.open(file_url, "wb") as f:
+            await f.write(contents)
 
         return file_url
 
@@ -275,6 +270,25 @@ class UserRepository:
             detail="This project not found!",
         )
 
+    async def get_user_with_categories(self, current_user: User) -> User:
+        stmt = (
+            select(User)
+            .options(selectinload(User.category))
+            .where(User.id == current_user.id)
+        )
+        user = await self.session.scalar(stmt)
+        return user
+
+    async def get_categories(
+        self, page: int = 1, page_size: int = 10
+    ) -> List[Category]:
+        offset = (page - 1) * page_size
+        stmt = select(Category).order_by(Category.id).limit(page_size).offset(offset)
+        result = await self.session.execute(stmt)
+        categories = result.scalars().all()
+
+        return list(categories)
+
     async def get_category_by_id(self, category_id: int) -> Category:
         stmt = select(Category).where(Category.id == category_id)
         category = await self.session.scalar(stmt)
@@ -287,27 +301,124 @@ class UserRepository:
             detail="This category not found!",
         )
 
-    async def get_user_with_categories(self, current_user: User) -> User:
-        stmt = select(User).options(selectinload(User.category)).where(User.id == current_user.id)
-        user = await self.session.scalar(stmt)
-        return user
+    async def create_category(
+        self, category_create: CategoryCreate, current_user: User
+    ) -> Category:
 
+        category = Category(
+            **{
+                **category_create.model_dump(),
+                "user_id": current_user.id,
+            }
+        )
+
+        self.session.add(category)
+        await self.session.commit()
+        await self.session.refresh(category)
+
+        return category
+
+    async def get_tasks(self, page: int = 1, page_size: int = 10) -> List[Task]:
+        offset = (page - 1) * page_size
+        stmt = select(Task).order_by(Task.id).limit(page_size).offset(offset)
+        result = await self.session.execute(stmt)
+        tasks = result.scalars().all()
+
+        return list(tasks)
+
+    async def get_task_by_id(self, task_id: int) -> Task:
+        stmt = select(Task).where(Task.id == task_id)
+        task = await self.session.scalar(stmt)
+
+        if task is not None:
+            return task
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="This task not found!",
+        )
+
+    async def get_user_tasks(
+        self, user_id: int, page: int = 1, page_size: int = 10
+    ) -> List[Task]:
+
+        offset = (page - 1) * page_size
+        stmt = (
+            select(Task)
+            .where(Task.assignee_id == user_id)
+            .limit(page_size)
+            .offset(offset)
+        )
+        tasks = await self.session.scalars(stmt)
+        return list(tasks)
+
+    async def get_user_priority_tasks(
+        self,
+        user_id: int,
+        priority: TaskPriority,
+        page: int = 1,
+        page_size: int = 10,
+    ) -> List[Task]:
+
+        offset = (page - 1) * page_size
+        stmt = (
+            select(Task)
+            .where(Task.assignee_id == user_id)
+            .where(Task.priority == priority)
+            .limit(page_size)
+            .offset(offset)
+        )
+        tasks = await self.session.scalars(stmt)
+        return list(tasks)
+
+    async def get_user_tasks_info(self, user_id: int) -> UserTasksInfo:
+        stmt = select(Task).where(Task.assignee_id == user_id)
+        result = await self.session.execute(stmt)
+        tasks = result.scalars().all()
+
+        all_tasks = len(tasks)
+        completed_tasks = sum(
+            1 for task in tasks if task.status == TaskStatus.COMPLETED
+        )
+
+        user_tasks = UserTasksInfo(
+            all_tasks=all_tasks,
+            completed_tasks=completed_tasks,
+        )
+
+        return user_tasks
 
     async def create_task(self, task_create: TaskCreate, current_user: User) -> Task:
-        pass
-        # assignee_id = await self.get_user_by_id(task_create.assignee_id)
-        # project_id = await self.get_project_by_id(project_id=task_create.project_id)
-        # category_id = await self.get
-        #
-        # task = Task(
-        #     **{
-        #         **task_create.model_dump(),
-        #         "author_id": current_user.id,
-        #     }
-        # )
-        #
-        # self.session.add(task)
-        # await self.session.commit()
-        # await self.session.refresh(task)
-        #
-        # return task
+        assignee_id = await self.get_user_by_id(task_create.assignee_id)
+        project_id = await self.get_project_by_id(project_id=task_create.project_id)
+        category_id = await self.get_category_by_id(category_id=task_create.category_id)
+
+        if assignee_id and project_id and category_id:
+
+            task = Task(
+                **{
+                    **task_create.model_dump(),
+                    "author_id": current_user.id,
+                    "created_at": datetime.now(timezone.utc)
+                    .replace(tzinfo=None)
+                    .replace(microsecond=0),
+                    "updated_at": datetime.now(timezone.utc)
+                    .replace(tzinfo=None)
+                    .replace(microsecond=0),
+                }
+            )
+
+            self.session.add(task)
+            await self.session.commit()
+            await self.session.refresh(task)
+
+            return task
+
+    async def complete_task(self, task_id: int) -> Task:
+        task = await self.get_task_by_id(task_id=task_id)
+
+        task.status = TaskStatus.COMPLETED
+        await self.session.commit()
+        await self.session.refresh(task)
+
+        return task
