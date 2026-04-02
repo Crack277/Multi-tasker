@@ -1,8 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.schemas.project_schemas import (CreateUserProject,
-                                             UpdateUserProject)
+from src.api.schemas.project_schemas import CreateUserProject, UpdateUserProject
 from src.api.services.project_service import ProjectService
 from src.api.utils import security
 from src.config import settings
@@ -30,6 +29,19 @@ async def create_project(
     service = ProjectService(session)
     return await service.create_project(
         project_create=project_create, current_user=current_user
+    )
+
+
+@router.post("/upload-file")
+async def upload_file(
+    project_id: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(security.get_current_user),
+    session: AsyncSession = Depends(db_helper.session_dependency),
+):
+    service = ProjectService(session)
+    return await service.upload_file(
+        project_id=project_id, file=file, current_user=current_user
     )
 
 

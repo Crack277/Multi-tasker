@@ -1,10 +1,10 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.repositories.user_repository import UserRepository
 from src.api.schemas.profile_schemas import ProfileUpdate
 from src.api.schemas.user_schemas import UserUpdate
-from src.models import User
+from src.models import Profile, User
 
 
 class ProfileService:
@@ -12,12 +12,12 @@ class ProfileService:
         self.repository = UserRepository(session)
         self.session = session
 
-    async def get_user_with_profile(self, current_user: User):
+    async def get_user_with_profile(self, current_user: User) -> User:
         return await self.repository.get_user_with_profile(current_user=current_user)
 
     async def update_user_with_profile(
         self, current_user: User, profile_update: ProfileUpdate
-    ):
+    ) -> Profile:
         user = await self.repository.get_user_with_profile(current_user=current_user)
 
         existing_user = await self.repository.get_user_by_email_optional(
@@ -38,3 +38,12 @@ class ProfileService:
         )
 
         return updated_profile
+
+    async def upload_file(self, file: UploadFile, current_user: User) -> str:
+        file_url = await self.repository.upload_file(
+            file=file, user_id=current_user.id, name="avatar"
+        )
+        user = await self.repository.get_user_with_profile(current_user=current_user)
+        user.profile.photo = file_url
+        await self.session.commit()
+        return file_url
