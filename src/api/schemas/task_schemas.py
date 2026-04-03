@@ -34,6 +34,3 @@ class UserTasksInfo(BaseModel):
     all_tasks: int
     completed_tasks: int
 
-
-# class BaseTask(TaskCreate):
-#     author_id: int

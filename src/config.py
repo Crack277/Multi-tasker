@@ -3,10 +3,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class RedisSettings(BaseModel):
-    host: str = "localhost"
-    port: int = 6379
-    db: int = 0
-    password: str | None = None
+    host: str
+    port: int
+    db: int
+    password: str | None
 
     @property
     def url(self) -> str:
@@ -65,7 +65,7 @@ class AppSettings(BaseSettings):
     db: DatabaseSettings
     api: ApiPrefix = ApiPrefix()
     access_token: AccessToken
-    redis: RedisSettings = RedisSettings()
+    redis: RedisSettings
 
 
 settings = AppSettings()
