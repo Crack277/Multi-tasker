@@ -10,9 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from src.api.schemas.category_schemas import CategoryCreate
+from src.api.schemas.pagination_schemas import Pagination
 from src.api.schemas.profile_schemas import ProfileUpdate
 from src.api.schemas.project_schemas import CreateUserProject, UpdateUserProject
-from src.api.schemas.task_schemas import TaskCreate, UserTasksInfo
+from src.api.schemas.task_schemas import TaskCreate, UserTasksInfo, TaskTypes
 from src.api.schemas.user_schemas import (
     AuthUpdatePassword,
     UnAuthUpdatePassword,
@@ -21,16 +22,16 @@ from src.api.schemas.user_schemas import (
 )
 from src.api.utils import security
 from src.models import Category, Profile, Project, Task, User
-from src.models.task import TaskStatus, TaskPriority
+from src.api.schemas.task_schemas import TaskStatus, TaskPriority
 
 
 class UserRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_users(self, page: int = 1, page_size: int = 10) -> List[User]:
-        offset = (page - 1) * page_size
-        stmt = select(User).order_by(User.id).limit(page_size).offset(offset)
+    async def get_users(self, pagination: Pagination) -> List[User]:
+        offset = (pagination.page - 1) * pagination.page_size
+        stmt = select(User).order_by(User.id).limit(pagination.page_size).offset(offset)
         result: Result = await self.session.execute(stmt)
         users = result.scalars().all()
         return list(users)
@@ -280,10 +281,10 @@ class UserRepository:
         return user
 
     async def get_categories(
-        self, page: int = 1, page_size: int = 10
+        self, pagination: Pagination,
     ) -> List[Category]:
-        offset = (page - 1) * page_size
-        stmt = select(Category).order_by(Category.id).limit(page_size).offset(offset)
+        offset = (pagination.page - 1) * pagination.page_size
+        stmt = select(Category).order_by(Category.id).limit(pagination.page_size).offset(offset)
         result = await self.session.execute(stmt)
         categories = result.scalars().all()
 
@@ -318,9 +319,9 @@ class UserRepository:
 
         return category
 
-    async def get_tasks(self, page: int = 1, page_size: int = 10) -> List[Task]:
-        offset = (page - 1) * page_size
-        stmt = select(Task).order_by(Task.id).limit(page_size).offset(offset)
+    async def get_tasks(self, pagination: Pagination) -> List[Task]:
+        offset = (pagination.page - 1) * pagination.page_size
+        stmt = select(Task).order_by(Task.id).limit(pagination.page_size).offset(offset)
         result = await self.session.execute(stmt)
         tasks = result.scalars().all()
 
@@ -339,14 +340,14 @@ class UserRepository:
         )
 
     async def get_user_tasks(
-        self, user_id: int, page: int = 1, page_size: int = 10
+        self, user_id: int, pagination: Pagination
     ) -> List[Task]:
 
-        offset = (page - 1) * page_size
+        offset = (pagination.page - 1) * pagination.page_size
         stmt = (
             select(Task)
             .where(Task.assignee_id == user_id)
-            .limit(page_size)
+            .limit(pagination.page_size)
             .offset(offset)
         )
         tasks = await self.session.scalars(stmt)
@@ -355,21 +356,35 @@ class UserRepository:
     async def get_user_priority_tasks(
         self,
         user_id: int,
-        priority: TaskPriority,
-        page: int = 1,
-        page_size: int = 10,
+        pagination: Pagination,
+        types: List[TaskTypes],
     ) -> List[Task]:
-
-        offset = (page - 1) * page_size
+        offset = (pagination.page - 1) * pagination.page_size
         stmt = (
             select(Task)
             .where(Task.assignee_id == user_id)
-            .where(Task.priority == priority)
-            .limit(page_size)
+            .where(
+                Task.priority.in_(
+                    types,
+                )
+            )
+            .limit(pagination.page_size)
             .offset(offset)
         )
         tasks = await self.session.scalars(stmt)
         return list(tasks)
+
+
+        # offset = (pagination.page - 1) * pagination.page_size
+        # stmt = (
+        #     select(Task)
+        #     .where(Task.assignee_id == user_id)
+        #     .where(Task.priority == priority)
+        #     .limit(pagination.page_size)
+        #     .offset(offset)
+        # )
+        # tasks = await self.session.scalars(stmt)
+        # return list(tasks)
 
     async def get_user_tasks_info(self, user_id: int) -> UserTasksInfo:
         stmt = select(Task).where(Task.assignee_id == user_id)
