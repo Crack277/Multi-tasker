@@ -3,8 +3,26 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 
-from src.models.task import TaskPriority, TaskStatus
+from enum import StrEnum, Enum
 
+
+class TaskTypes(StrEnum):
+    VERY_URGENT = "very_urgent"  # очень срочно (красный)
+    URGENT = "urgent"  # срочно (оранжевый)
+    CAN_WAIT = "can_wait"  # может подождать (желтый)
+    NOT_URGENT = "not_urgent"  # не срочно (зеленый)
+
+
+class TaskPriority(str, Enum):
+    VERY_URGENT = "very_urgent"
+    URGENT = "urgent"
+    CAN_WAIT = "can_wait"
+    NOT_URGENT = "not_urgent"
+
+
+class TaskStatus(str, Enum):
+    IN_PROGRESS = "in_progress"  # в работе
+    COMPLETED = "completed"  # выполнена
 
 class TaskCreate(BaseModel):
     assignee_id: int

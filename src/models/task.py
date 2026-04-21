@@ -1,5 +1,4 @@
 from datetime import datetime
-from enum import Enum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime
@@ -8,23 +7,12 @@ from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models import Base
+from src.api.schemas.task_schemas import TaskPriority, TaskStatus
 
 if TYPE_CHECKING:
     from .category import Category
     from .project import Project
     from .user import User
-
-
-class TaskPriority(str, Enum):
-    VERY_URGENT = "very_urgent"  # очень срочно (красный)
-    URGENT = "urgent"  # срочно (оранжевый)
-    CAN_WAIT = "can_wait"  # может подождать (желтый)
-    NOT_URGENT = "not_urgent"  # не срочно (зеленый)
-
-
-class TaskStatus(str, Enum):
-    IN_PROGRESS = "in_progress"  # в работе
-    COMPLETED = "completed"  # выполнена
 
 
 class Task(Base):
