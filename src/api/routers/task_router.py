@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends, Query
+from typing import List
+
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.schemas.task_schemas import TaskCreate
+from src.api.schemas.pagination_schemas import Pagination
+from src.api.schemas.task_schemas import TaskCreate, TaskTypes
 from src.api.services.task_service import TaskService
 from src.api.utils import security
 from src.config import settings
@@ -11,13 +14,13 @@ from src.models import User
 router = APIRouter(prefix=settings.api.v1.tasks, tags=["TASKS"])
 
 
-@router.get("/all")
+@router.post("/all")
 async def get_tasks(
-    page: int,
+    pagination: Pagination,
     session: AsyncSession = Depends(db_helper.session_dependency),
 ):
     service = TaskService(session)
-    return await service.get_tasks(page=page)
+    return await service.get_tasks(pagination=pagination)
 
 
 @router.get("/{task_id}/")
@@ -29,14 +32,14 @@ async def get_task_by_id(
     return await service.get_task_by_id(task_id=task_id)
 
 
-@router.get("/{user_id}/completed")
+@router.post("/{user_id}/completed")
 async def get_user_completed_tasks(
     user_id: int,
-    page: int,
+    pagination: Pagination,
     session: AsyncSession = Depends(db_helper.session_dependency),
 ):
     service = TaskService(session)
-    return await service.get_user_completed_tasks(user_id=user_id, page=page)
+    return await service.get_user_completed_tasks(user_id=user_id, pagination=pagination)
 
 
 @router.get("/{user_id}/info")
@@ -68,22 +71,16 @@ async def complete_task(
     return await service.complete_task(task_id=task_id, current_user=current_user)
 
 
-@router.get("/")
+@router.post("/")
 async def get_user_tasks_by_priority(
-    page: int,
-    very_urgent: bool = Query(False),
-    urgent: bool = Query(False),
-    can_wait: bool = Query(False),
-    not_urgent: bool = Query(False),
+    pagination: Pagination,
+    types: List[TaskTypes],
     current_user: User = Depends(security.get_current_user),
     session: AsyncSession = Depends(db_helper.session_dependency),
 ):
     service = TaskService(session)
     return await service.get_user_tasks_by_priority(
-        page=page,
-        very_urgent=very_urgent,
-        urgent=urgent,
-        can_wait=can_wait,
-        not_urgent=not_urgent,
+        pagination=pagination,
+        types=types,
         current_user=current_user,
     )
