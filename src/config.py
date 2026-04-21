@@ -6,7 +6,7 @@ class RedisSettings(BaseModel):
     host: str
     port: int
     db: int
-    password: str | None
+    password: str | None = None
 
     @property
     def url(self) -> str:
