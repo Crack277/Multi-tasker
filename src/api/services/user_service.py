@@ -4,6 +4,7 @@ from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.repositories.user_repository import UserRepository
+from src.api.schemas.pagination_schemas import Pagination
 from src.api.schemas.user_schemas import (
     PrintAccessToken,
     UnAuthUpdatePassword,
@@ -20,8 +21,8 @@ class UserService:
         self.repository = UserRepository(session)
         self.session = session
 
-    async def get_users(self, page: int) -> List[User]:
-        return await self.repository.get_users(page=page)
+    async def get_users(self, pagination: Pagination) -> List[User]:
+        return await self.repository.get_users(pagination=pagination)
 
     async def get_user_by_id(self, user_id: int) -> User:
         return await self.repository.get_user_by_id(user_id=user_id)

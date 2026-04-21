@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.schemas.pagination_schemas import Pagination
 from src.api.schemas.user_schemas import UnAuthUpdatePassword, UserCreate
 from src.api.services.user_service import UserService
 from src.config import settings
@@ -10,12 +11,13 @@ from src.database.database_helper import db_helper
 router = APIRouter(prefix=settings.api.v1.users, tags=["USERS"])
 
 
-@router.get("/")
+@router.post("/")
 async def get_users(
-    page: int, session: AsyncSession = Depends(db_helper.session_dependency)
+    pagination: Pagination,
+    session: AsyncSession = Depends(db_helper.session_dependency)
 ):
     service = UserService(session)
-    return await service.get_users(page=page)
+    return await service.get_users(pagination=pagination)
 
 
 @router.get("/{user_id}/")

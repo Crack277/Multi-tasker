@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.schemas.category_schemas import CategoryCreate
+from src.api.schemas.pagination_schemas import Pagination
 from src.api.services.category_service import CategoryService
 from src.api.utils import security
 from src.config import settings
@@ -11,13 +12,13 @@ from src.models import User
 router = APIRouter(prefix=settings.api.v1.categories, tags=["CATEGORIES"])
 
 
-@router.get("/all")
+@router.post("/all")
 async def get_categories(
-    page: int,
+    pagination: Pagination,
     session: AsyncSession = Depends(db_helper.session_dependency),
 ):
     service = CategoryService(session)
-    return await service.get_categories(page=page)
+    return await service.get_categories(pagination=pagination)
 
 
 @router.post("/{category_id}/")
