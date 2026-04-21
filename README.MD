@@ -65,6 +65,11 @@
 git clone https://github.com/Crack277/Multi-tasker.git
 ```
 
+### Установка зависимостей
+
+```bash
+poetry install #--no-root
+```
 
 ### Настройка переменных окружения
 
