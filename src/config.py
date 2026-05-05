@@ -33,6 +33,7 @@ class ApiPrefix(BaseModel):
 class AccessToken(BaseModel):
     secret_key: str
     expire_minutes: int = 15
+    type: str = "Bearer"
     ALGORITHM: str = "HS256"
 
 
